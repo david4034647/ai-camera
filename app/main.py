@@ -85,7 +85,11 @@ def _guard(request: Request, token: Optional[str] = None) -> None:
 # ---------------------------------------------------------------------------
 @app.get("/")
 async def index() -> FileResponse:
-    return FileResponse(Path(__file__).parent / "static" / "index.html")
+    # no-store: 前端资源用 ?v= 版本号做缓存失效，HTML 本身不缓存
+    return FileResponse(
+        Path(__file__).parent / "static" / "index.html",
+        headers={"Cache-Control": "no-store, must-revalidate"},
+    )
 
 
 @app.get("/favicon.svg")
