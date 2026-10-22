@@ -1,6 +1,7 @@
 """Unit tests that do not need a camera."""
 from __future__ import annotations
 
+import shutil
 import subprocess
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -13,6 +14,10 @@ from app.detector import Detection, _nms
 from app.monitor import _parse_day
 from app.recorder import DailyRecorder, _day_path, _next_segment_index, merge_day_segments
 from app.storage import EventStore
+
+
+_HAS_FFMPEG = shutil.which("ffmpeg") is not None and shutil.which("ffprobe") is not None
+needs_ffmpeg = pytest.mark.skipif(not _HAS_FFMPEG, reason="ffmpeg/ffprobe not installed")
 
 
 # --------------------------------------------------------------------------- #
@@ -35,6 +40,7 @@ def test_day_path_and_index(tmp_path: Path):
     assert _next_segment_index(tmp_path, day) == 3
 
 
+@needs_ffmpeg
 def test_daily_recorder_frame_rate(tmp_path: Path):
     """The writer must emit a constant frame rate regardless of input bursts."""
     rec = DailyRecorder(tmp_path, 320, 180, fps=10, crf=30, maxrate="300k")
@@ -134,6 +140,7 @@ def _make_video(path: Path, seconds: int = 1) -> None:
     )
 
 
+@needs_ffmpeg
 def test_merge_day_segments(tmp_path: Path):
     day = "2026-01-01"
     _make_video(tmp_path / f"{day}.mp4", 1)
