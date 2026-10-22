@@ -113,7 +113,7 @@ async function refreshStatus() {
     $("tRecSize").textContent = fmtBytes(rec.segment_bytes || 0);
     $("tRecFile").textContent = rec.file || "未录制";
     $("tDisk").textContent = fmtBytes(st.disk_free_bytes || 0);
-    $("tRetention").textContent = `保留 ${st.retention_days || 7} 天 · 已用 ${fmtBytes(st.used_bytes || 0)}`;
+    $("tRetention").textContent = `保留 ${st.retention_days || 3} 天 · 已用 ${fmtBytes(st.used_bytes || 0)}`;
     $("recHint").textContent = s.running ? "录制中" : "";
 
     if (!s.running) $("mUptime").textContent = "—";

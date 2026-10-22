@@ -190,7 +190,9 @@ class MonitoringService:
     def __init__(self, settings: Settings) -> None:
         self.s = settings
         ensure_dirs(settings)
-        merge_day_segments(settings.data_path("recordings"), skip=date.today())
+        # 启动时（录制尚未开始）把历史分段合并回每天一个文件，今天的也一并合并，
+        # 这样"每天一个视频"在多次重启后依然成立。
+        merge_day_segments(settings.data_path("recordings"))
 
         self.store = EventStore(settings.data_path("events.db"))
         self.camera = CameraManager(

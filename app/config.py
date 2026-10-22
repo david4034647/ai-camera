@@ -39,7 +39,7 @@ class Settings:
     record_crf: int = 30           # higher = smaller file, lower quality
     record_maxrate: str = "600k"   # hard bitrate ceiling
     record_max_file_mb: int = 4096
-    retention_days: int = 7
+    retention_days: int = 3
     min_free_gb: float = 3.0
 
     # --- detection ----------------------------------------------------

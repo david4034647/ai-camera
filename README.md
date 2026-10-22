@@ -1,7 +1,7 @@
 # AI Camera · 本地 AI 监控摄像头
 
 把一台普通电脑 + 一个普通摄像头，变成一个**完全离线**的智能监控摄像头：7×24 小时连续录像、
-每天一个视频文件、自动保留 7 天、检测到人像自动截图与录制事件短片，全部在本机 CPU 上完成，
+每天一个视频文件、自动保留 3 天、检测到人像自动截图与录制事件短片，全部在本机 CPU 上完成，
 不依赖任何云服务。
 
 ```
@@ -21,7 +21,7 @@
 
 - **一键开关**：Web 界面上的开关控制整个管线；关闭后摄像头停止采集（指示灯熄灭），不做任何录制。
 - **持续录像**：固定帧率时钟写入，画面时间轴与真实时间严格一致；每天 00:00 自动换新文件。
-- **7 天循环**：定时清理超过保留期的录像与事件；磁盘空间不足时优先删除最旧的数据。
+- **3 天循环**：每 5 分钟检查一次，删除超过保留期（`retention_days`）的录像与事件；磁盘空间不足时优先删除最旧的数据。
 - **离线人像检测**：MobileNet-SSD 检测人体 + YuNet 检测人脸，纯 CPU、约 4 次/秒、无网络请求。
 - **事件留证**：检测到人像立刻保存带检测框的全分辨率截图，并录制一段 10 秒 MP4。
 - **实时预览**：浏览器内 MJPEG 直播，叠加检测框、时间戳、当前人数。
@@ -55,6 +55,61 @@ sudo ./scripts/install.sh /opt/ai-camera      # 复制到 /opt 并注册 systemd
 sudo systemctl status aicam
 ```
 
+## 启动 / 停止 / 重启
+
+### 方式 A：systemd 常驻服务（推荐，7×24 监控）
+
+```bash
+sudo ./scripts/install.sh /opt/ai-camera   # 首次安装：复制到 /opt、建 venv、注册并启用 aicam.service
+
+sudo systemctl start aicam                 # 启动
+sudo systemctl stop aicam                  # 停止（会优雅收尾 ffmpeg，已录内容可播放）
+sudo systemctl restart aicam               # 重启（改完 config.json 用这个生效）
+sudo systemctl status aicam                # 查看运行状态
+journalctl -u aicam -f                     # 实时日志（Ctrl+C 退出，不影响服务）
+
+sudo systemctl enable aicam                # 开机自启（install.sh 默认已执行）
+sudo systemctl disable aicam               # 取消开机自启
+```
+
+### 方式 B：临时后台运行（开发调试用）
+
+```bash
+cd ~/projects/ai-camera
+nohup .venv/bin/python -m app.main > /tmp/aicam.log 2>&1 &   # 启动
+tail -f /tmp/aicam.log                                       # 看日志
+pkill -f "[a]pp.main$"                                       # 停止
+```
+
+### 方式 C：前台运行
+
+```bash
+cd ~/projects/ai-camera
+.venv/bin/python -m app.main        # Ctrl+C 停止
+```
+
+> 小坑：`pkill -f "app.main"` 会连自己这条 shell 命令一起匹配到，所以要写成 `pkill -f "[a]pp.main$"`（正则里的字符类绕过自匹配），或者直接用 `ps -ef | grep [a]pp.main` 查 PID 再 `kill <PID>`。
+> 优雅停止请优先用 `systemctl stop` 或 Web 开关，直接 `kill -9` 会让当前分段的最后几十毫秒丢失（fragmented MP4 仍可播放）。
+
+### 只开关监控，不停止服务
+
+Web 界面右上角的开关，等价于这两个接口：
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/monitor/start   # 开始监控（摄像头开始采集、录制、检测）
+curl -X POST http://127.0.0.1:8080/api/monitor/stop    # 停止监控（摄像头指示灯熄灭，不再录制）
+```
+
+注意区别：这两个接口只停/启采集与录制管线，Web 服务本身仍在运行，页面还能打开；
+而 `systemctl stop aicam` 是把整个服务停掉，8080 端口也不再有响应。
+
+### 健康检查
+
+```bash
+curl -s http://127.0.0.1:8080/api/health                       # {"ok":true,"running":true,...}
+curl -s http://127.0.0.1:8080/api/status | python3 -m json.tool # 摄像头帧率、录像文件、事件数、磁盘
+```
+
 ## 目录结构
 
 ```
@@ -86,7 +141,7 @@ models/            检测模型（不进入 git，自动下载）
 | `record_width` / `record_height` | `960` / `540` | 录像分辨率（0 表示不缩放） |
 | `record_fps` | `12` | 录像帧率 |
 | `record_crf` / `record_maxrate` | `30` / `600k` | H.264 质量与码率上限 |
-| `retention_days` | `7` | 录像与事件保留天数 |
+| `retention_days` | `3` | 录像与事件保留天数（含今天，即今天 + 前 2 天） |
 | `min_free_gb` | `3` | 磁盘剩余低于该值时提前删除最旧数据 |
 | `detect_fps` | `4` | 检测频率（次/秒） |
 | `person_conf` | `0.45` | 人体检测置信度阈值 |
@@ -97,8 +152,8 @@ models/            检测模型（不进入 git，自动下载）
 
 ### 存储估算
 
-960×540 / 12 fps / CRF 30 在安静室内约 **150–300 kbps**，即每天 1.6–3 GB，7 天约 12–22 GB；
-画面剧烈运动时最高 600 kbps，7 天上限约 45 GB。用 `df -h` 关注剩余空间，或调低
+960×540 / 12 fps / CRF 30 在安静室内约 **150–300 kbps**，即每天 1.6–3 GB，3 天约 5–9 GB；
+画面剧烈运动时最高 600 kbps，3 天上限约 19 GB。用 `df -h` 关注剩余空间，或调低
 `record_maxrate` / `record_fps` 进一步压缩。
 
 ## 检测模型
