@@ -214,15 +214,15 @@ async function openEvent(id) {
     const ev = await api(`/api/events/${id}`);
     const html = `
       <h4>事件 #${ev.id} · ${fmtTime(ev.started_at)}</h4>
-      ${ev.clip ? `<video controls autoplay muted loop src="/api/events/${id}/clip"></video>` : ""}
-      ${ev.snapshot ? `<img src="/api/events/${id}/snapshot" alt="snapshot" style="margin-top:${ev.clip ? "12px" : "0"}">` : ""}
       <div class="row">
         <span>人数 ${ev.persons || 1}</span>
         <span>人脸 ${ev.faces || 0}</span>
         <span>持续 ${ev.duration ? ev.duration + " 秒" : "进行中"}</span>
         <span>置信度 ${ev.score ? ev.score.toFixed(2) : "—"}</span>
         <span>结束 ${fmtTime(ev.ended_at)}</span>
-      </div>`;
+      </div>
+      ${ev.clip ? `<video controls autoplay muted loop src="/api/events/${id}/clip"></video>` : ""}
+      ${ev.snapshot ? `<img src="/api/events/${id}/snapshot" alt="snapshot" style="margin-top:${ev.clip ? "12px" : "0"}">` : ""}`;
     $("modalContent").innerHTML = html;
     $("modal").classList.add("open");
   } catch (e) {
