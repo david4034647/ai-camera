@@ -1,0 +1,21 @@
+[Unit]
+Description=AI Camera - local AI monitoring camera
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__DIR__
+ExecStart=__DIR__/.venv/bin/python -m app.main
+Restart=always
+RestartSec=3
+# give ffmpeg time to finalise today's file on shutdown
+TimeoutStopSec=20
+# nice for a 24/7 service on a laptop
+Nice=5
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+
+[Install]
+WantedBy=multi-user.target
