@@ -1,6 +1,13 @@
 /* AI Camera dashboard – vanilla JS, no build step. */
 const $ = (id) => document.getElementById(id);
 
+/* 访问令牌：http://IP:8080/?token=xxx 打开一次即可，之后所有请求自动携带 */
+const TOKEN = new URLSearchParams(location.search).get("token") || "";
+function withToken(url) {
+  if (!TOKEN) return url;
+  return url + (url.includes("?") ? "&" : "?") + "token=" + encodeURIComponent(TOKEN);
+}
+
 const state = {
   running: false,
   lastEventId: 0,
@@ -44,7 +51,7 @@ function toast(msg, ms = 2600) {
 }
 
 async function api(path, opts = {}) {
-  const res = await fetch(path, {
+  const res = await fetch(withToken(path), {
     headers: { "Content-Type": "application/json" },
     ...opts,
   });
@@ -61,7 +68,7 @@ function startStream() {
   const img = $("live");
   clearTimeout(state.streamRetry);
   state.streamKey += 1;
-  img.src = `/stream.mjpg?k=${state.streamKey}&t=${Date.now()}`;
+  img.src = withToken(`/stream.mjpg?k=${state.streamKey}&t=${Date.now()}`);
   $("videoWrap").classList.add("on");
 }
 
@@ -173,7 +180,7 @@ function renderEvents(events) {
     return;
   }
   box.innerHTML = events.map((e) => {
-    const img = e.has_snapshot ? `/api/events/${e.id}/snapshot` : "";
+    const img = e.has_snapshot ? withToken(`/api/events/${e.id}/snapshot`) : "";
     const dur = e.duration ? `${e.duration}s` : (e.ended_at ? "—" : "进行中");
     return `<div class="event" data-id="${e.id}">
       ${img ? `<img loading="lazy" src="${img}" alt="事件 ${e.id}">`
@@ -221,8 +228,8 @@ async function openEvent(id) {
         <span>置信度 ${ev.score ? ev.score.toFixed(2) : "—"}</span>
         <span>结束 ${fmtTime(ev.ended_at)}</span>
       </div>
-      ${ev.clip ? `<video controls autoplay muted loop src="/api/events/${id}/clip"></video>` : ""}
-      ${ev.snapshot ? `<img src="/api/events/${id}/snapshot" alt="snapshot" style="margin-top:${ev.clip ? "12px" : "0"}">` : ""}`;
+      ${ev.clip ? `<video controls autoplay muted loop src="${withToken(`/api/events/${id}/clip`)}"></video>` : ""}
+      ${ev.snapshot ? `<img src="${withToken(`/api/events/${id}/snapshot`)}" alt="snapshot" style="margin-top:${ev.clip ? "12px" : "0"}">` : ""}`;
     $("modalContent").innerHTML = html;
     $("modal").classList.add("open");
   } catch (e) {
@@ -277,10 +284,11 @@ function renderStorage(st) {
 }
 
 async function openRecording(name) {
+  const url = withToken(`/api/recordings/${encodeURIComponent(name)}`);
   $("modalContent").innerHTML = `
     <h4>${name}</h4>
-    <video controls autoplay src="/api/recordings/${encodeURIComponent(name)}"></video>
-    <div class="row"><a href="/api/recordings/${encodeURIComponent(name)}" download
+    <video controls autoplay src="${url}"></video>
+    <div class="row"><a href="${url}" download
       style="color:#67e8f9">下载文件</a></div>`;
   $("modal").classList.add("open");
 }

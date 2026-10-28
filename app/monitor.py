@@ -494,7 +494,11 @@ class MonitoringService:
             day = _parse_day(p.name)
             if not day:
                 continue
-            size = p.stat().st_size
+            try:
+                size = p.stat().st_size
+            except OSError:
+                # 文件可能刚好被保留期清理删掉，跳过即可
+                continue
             total += size
             d = days.setdefault(day.isoformat(), {"date": day.isoformat(), "bytes": 0, "files": 0})
             d["bytes"] += size

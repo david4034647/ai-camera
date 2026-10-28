@@ -204,7 +204,9 @@ async def api_snapshot(request: Request) -> Response:
 # events
 # ---------------------------------------------------------------------------
 @app.get("/api/events")
-async def api_events(day: Optional[str] = None, limit: int = Query(200, ge=1, le=1000)) -> JSONResponse:
+async def api_events(request: Request, day: Optional[str] = None,
+                     limit: int = Query(200, ge=1, le=1000)) -> JSONResponse:
+    _guard(request)
     rows = service.store.list(day=day, limit=limit)
     for r in rows:
         r["has_snapshot"] = bool(r.get("snapshot") and service.event_path(r["snapshot"]) and
@@ -215,7 +217,8 @@ async def api_events(day: Optional[str] = None, limit: int = Query(200, ge=1, le
 
 
 @app.get("/api/events/{event_id}")
-async def api_event(event_id: int) -> JSONResponse:
+async def api_event(event_id: int, request: Request) -> JSONResponse:
+    _guard(request)
     ev = service.store.get(event_id)
     if not ev:
         raise HTTPException(status_code=404, detail="event not found")
@@ -223,7 +226,8 @@ async def api_event(event_id: int) -> JSONResponse:
 
 
 @app.get("/api/events/{event_id}/snapshot")
-async def api_event_snapshot(event_id: int) -> FileResponse:
+async def api_event_snapshot(event_id: int, request: Request) -> FileResponse:
+    _guard(request)
     ev = service.store.get(event_id)
     if not ev or not ev.get("snapshot"):
         raise HTTPException(status_code=404, detail="snapshot not found")
@@ -234,7 +238,8 @@ async def api_event_snapshot(event_id: int) -> FileResponse:
 
 
 @app.get("/api/events/{event_id}/clip")
-async def api_event_clip(event_id: int) -> FileResponse:
+async def api_event_clip(event_id: int, request: Request) -> FileResponse:
+    _guard(request)
     ev = service.store.get(event_id)
     if not ev or not ev.get("clip"):
         raise HTTPException(status_code=404, detail="clip not found")
@@ -264,7 +269,8 @@ async def api_event_delete(event_id: int, request: Request) -> JSONResponse:
 # recordings
 # ---------------------------------------------------------------------------
 @app.get("/api/recordings")
-async def api_recordings() -> JSONResponse:
+async def api_recordings(request: Request) -> JSONResponse:
+    _guard(request)
     stats = service.storage_stats()
     rec_dir = settings.data_path("recordings")
     files = []
@@ -283,7 +289,8 @@ async def api_recordings() -> JSONResponse:
 
 
 @app.get("/api/recordings/{name}")
-async def api_recording(name: str) -> FileResponse:
+async def api_recording(name: str, request: Request) -> FileResponse:
+    _guard(request)
     if "/" in name or "\\" in name or ".." in name:
         raise HTTPException(status_code=400, detail="bad file name")
     p = settings.data_path("recordings", name)

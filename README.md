@@ -4,6 +4,9 @@
 每天一个视频文件、自动保留 3 天、检测到人像自动截图与录制事件短片，全部在本机 CPU 上完成，
 不依赖任何云服务。
 
+> 📖 **完整使用手册：[docs/使用指南.md](docs/使用指南.md)** —— 安装、启停、界面逐块说明、配置文件全表、
+> 接口清单、调优与故障排查。下面只是快速上手。
+
 ```
     ┌────────────┐    ┌──────────────┐    ┌──────────────────────────────┐
     │  USB 摄像头 │──▶│  采集线程     │──┬─▶│ 每日录像  recordings/YYYY-MM-DD.mp4 │
@@ -134,7 +137,7 @@ models/            检测模型（不进入 git，自动下载）
 | 字段 | 默认 | 说明 |
 | --- | --- | --- |
 | `host` / `port` | `0.0.0.0` / `8080` | 监听地址与端口 |
-| `auth_token` | `""` | 非空时 API/直播需要 `?token=xxx` 或 `Authorization: Bearer xxx` |
+| `auth_token` | `""` | 非空时控制/事件/录像/直播接口需带 `?token=xxx`（或 `Authorization: Bearer xxx`）；`/api/health`、`/api/status` 保持开放 |
 | `camera_index` | `0` | `/dev/video0` 对应 0 |
 | `capture_width` / `capture_height` | `1280` / `720` | 采集分辨率 |
 | `capture_fps` | `30` | 请求的摄像头帧率（见下方 FAQ） |
